@@ -193,6 +193,26 @@ RUN apt-get update && apt-get install -y iptables && \
     mkdir -p /opt/cni/bin && \
     curl -Ls https://github.com/containernetworking/plugins/releases/download/${CNI_PLUGINS_VERSION}/cni-plugins-linux-${TARGETARCH:-amd64}-${CNI_PLUGINS_VERSION}.tgz | tar xzv -C /opt/cni/bin
 
+FROM demo AS oind
+RUN mkdir -p /var/lib/containerd /var/lib/containerd-stargz-grpc /etc/containerd/ /etc/containerd-stargz-grpc/ /go/src/github.com/containerd/stargz-snapshotter
+COPY . /go/src/github.com/containerd/stargz-snapshotter/
+ENV REPO=$GOPATH/src/github.com/containerd/stargz-snapshotter \
+    CONTAINERD_CONFIG_DIR=/etc/containerd/ \
+    CONTAINERD_ROOT=/var/lib/containerd/ \
+    REMOTE_SNAPSHOTTER_CONFIG_DIR=/etc/containerd-stargz-grpc/ \
+    REMOTE_SNAPSHOTTER_ROOT=/var/lib/containerd-stargz-grpc/ \
+    REMOTE_SNAPSHOTTER_SOCKET=/run/containerd-stargz-grpc/containerd-stargz-grpc.sock \
+    CNI_CONFIG_DIR=/etc/cni/net.d/
+RUN mkdir -p "${CONTAINERD_CONFIG_DIR}" "${REMOTE_SNAPSHOTTER_CONFIG_DIR}" "${CNI_CONFIG_DIR}" "${CONTAINERD_ROOT}" "${REMOTE_SNAPSHOTTER_ROOT}" && \
+    cp "${REPO}/script/demo/config.containerd.toml" "${CONTAINERD_CONFIG_DIR}config.toml" && \
+    cp "${REPO}/script/demo/config.stargz.toml" "${REMOTE_SNAPSHOTTER_CONFIG_DIR}config.toml" && \
+    cp "${REPO}/script/demo/config.cni.conflist" "${CNI_CONFIG_DIR}optimizer.conflist"
+RUN cd "${REPO}" && PREFIX=/tmp/out/ make clean && \
+      PREFIX=/tmp/out/ make -j2 && \
+      PREFIX=/tmp/out/ make install
+ENV CONVERT_IMAGE=
+ENTRYPOINT ${REPO}/entrypoint.sh
+
 # Image which can be used as a node image for KinD (containerd with builtin snapshotter)
 FROM kindest/node:v1.20.0 AS kind-builtin-snapshotter
 COPY --from=containerd-snapshotter-dev /out/bin/containerd /out/bin/containerd-shim-runc-v2 /usr/local/bin/
