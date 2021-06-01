@@ -19,6 +19,10 @@ until ls /run/containerd/containerd.sock; do
   sleep 1;
 done
 
+echo "get current image in containerd"
+nerdctl image ls
+ctr-remote image ls
+
 echo "converting ${CONVERT_IMAGE}"
 nerdctl image pull ${CONVERT_IMAGE} && \
 ctr-remote image optimize --oci ${CONVERT_IMAGE} ${CONVERT_IMAGE}-esgz && \
