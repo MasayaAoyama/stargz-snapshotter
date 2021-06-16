@@ -24,7 +24,14 @@ nerdctl image ls
 ctr-remote image ls
 
 echo "converting ${CONVERT_IMAGE}"
+
+echo "starting nerdctl image pull $(date)" && \
 nerdctl image pull ${CONVERT_IMAGE} && \
-ctr-remote image optimize --oci ${CONVERT_IMAGE} ${CONVERT_IMAGE}-esgz && \
-nerdctl image push ${CONVERT_IMAGE}-esgz
+echo "ending nerdctl image pull $(date)" && \
+echo "starting ctr-remote image optimize $(date)" && \
+ctr-remote image optimize --oci --reuse ${CONVERT_IMAGE} ${CONVERT_IMAGE}-esgz && \
+echo "ending ctr-remote image optimize $(date)" && \
+echo "starting nerdctl image push $(date)" && \
+nerdctl image push ${CONVERT_IMAGE}-esgz && \
+echo "ending nerdctl image push $(date)"
 
